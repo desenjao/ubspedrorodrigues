@@ -1,44 +1,90 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://exames-coronel2d-2025.vercel.app/api"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://exames-coronel2d-2025.vercel.app/api";
 
-export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
-  const url = `${API_URL}${endpoint}`
+// Tipos básicos
+type Paciente = {
+  id: string;
+  nome: string;
+  // ... outros campos
+};
+
+type Exame = {
+  id: string;
+  tipo: string;
+  resultado: string;
+  // ... outros campos
+};
+
+type Gestante = {
+  id: string;
+  // ... outros campos
+};
+
+type CondicaoCronica = {
+  id: string;
+  tipo: string;
+  // ... outros campos
+};
+
+type Consulta = {
+  id: string;
+  data: string;
+  // ... outros campos
+};
+
+// Função base com tratamento de erros melhorado
+export async function fetchAPI<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${API_URL}${endpoint}`;
 
   const defaultOptions: RequestInit = {
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: 'include', // Para cookies, se necessário
+  };
+
+  try {
+    const response = await fetch(url, {
+      ...defaultOptions,
+      ...options,
+    });
+
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: response.statusText };
+      }
+      
+      throw new Error(
+        errorData.message || 
+        errorData.erro || 
+        `Erro na requisição: ${response.status} ${response.statusText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Erro na chamada da API:', error);
+    throw error;
   }
-
-  const response = await fetch(url, {
-    ...defaultOptions,
-    ...options,
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.erro || "Ocorreu um erro na requisição")
-  }
-
-  return response.json()
 }
-
-// Funções específicas para cada entidade
 
 // Pacientes
-export async function getPacientes(query?: string) {
-  const queryParams = query ? `?consulta=${encodeURIComponent(query)}` : ""
-  return fetchAPI(`/pacientes${queryParams}`)
+export async function getPacientes(query?: string): Promise<Paciente[]> {
+  const queryParams = query ? `?consulta=${encodeURIComponent(query)}` : "";
+  return fetchAPI(`/pacientes${queryParams}`);
 }
 
-export async function getPaciente(id: string) {
-  return fetchAPI(`/pacientes/${id}`)
+export async function getPaciente(id: string): Promise<Paciente> {
+  return fetchAPI(`/pacientes/${id}`);
 }
 
-export async function createPaciente(data: any) {
+export async function createPaciente(data: Omit<Paciente, 'id'>): Promise<Paciente> {
   return fetchAPI("/pacientes", {
     method: "POST",
     body: JSON.stringify(data),
-  })
+  });
 }
 
 export async function updatePaciente(id: string, data: any) {
